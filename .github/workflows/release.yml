@@ -1,0 +1,61 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "[0-9][0-9][0-9][0-9].[0-9]*.[0-9]*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "CalVer version. Leave empty to auto-compute."
+        required: false
+        type: string
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.14"
+      - run: bun install
+      - run: bun run lint && bun run type:check && bun run test && bun run build
+      - id: version
+        run: |
+          NAME=$(bun -e "console.log(require('./package.json').name)")
+          if [ "${{ github.event_name }}" = "push" ] && [ -n "${{ github.ref_name }}" ]; then
+            VERSION="${{ github.ref_name }}"
+          elif [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            YYYY=$(date -u '+%Y')
+            MDD=$((10#$(date -u '+%m%d')))
+            VERSION="${YYYY}.${MDD}.1"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+      - run: |
+          cat > .npmrc << NPMRC
+          //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}
+          NPMRC
+          sed -i 's/^ *//' .npmrc
+          bunx npm@latest version "${{ steps.version.outputs.version }}" --no-git-tag-version --allow-same-version
+          bunx npm@latest publish --registry "https://registry.npmjs.org/" --access public --ignore-scripts
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - if: github.event_name == 'workflow_dispatch'
+        run: |
+          git config --local user.email "ci@burdenoff.com"
+          git config --local user.name "CI"
+          git tag "${{ steps.version.outputs.version }}" -m "Release ${{ steps.version.outputs.name }}@${{ steps.version.outputs.version }}"
+          git push origin "${{ steps.version.outputs.version }}"

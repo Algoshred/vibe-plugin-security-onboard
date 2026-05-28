@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "LICENSE"
+      - ".gitignore"
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test & Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.14"
+      - run: bun install
+      - run: bun run format:check
+      - run: bun run lint
+      - run: bun run type:check
+      - run: bun run test
+      - run: bun run build
+
+  # Aggregator status required by the Algoshred `main` branch ruleset. Without a
+  # job that reports a "PR Gate" check, the required context sits at
+  # "Expected — Waiting for status to be reported" forever and blocks the PR.
+  pr-gate:
+    name: PR Gate
+    if: always()
+    needs: [test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Aggregate result
+        run: |
+          result="${{ needs.test.result }}"
+          if [ "$result" = "failure" ] || [ "$result" = "cancelled" ]; then
+            echo "::error::Test & Build $result — PR Gate fails"
+            exit 1
+          fi
+          echo "Test & Build passed — PR Gate green"
+
+  publish-npmjs:
+    name: Publish to npmjs
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.14"
+      - run: bun install
+      - run: bun run build
+      - run: bunx npm@latest --version
+      - id: version
+        run: |
+          NAME=$(bun -e "console.log(require('./package.json').name)")
+          YYYY=$(date -u '+%Y')
+          MDD=$((10#$(date -u '+%m%d')))
+          DATE_PREFIX="${YYYY}.${MDD}"
+          EXISTING=$(bunx npm@latest view "${NAME}" versions --json 2>/dev/null \
+            | jq -r '.[]? // empty' \
+            | grep -E "^${DATE_PREFIX}\\.[0-9]+$" | sort -t. -k3 -n || true)
+          MAX_PATCH=$(echo "$EXISTING" | tail -1 | cut -d. -f3)
+          NEXT_PATCH=$(( ${MAX_PATCH:-0} + 1 ))
+          VERSION="${DATE_PREFIX}.${NEXT_PATCH}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+      - name: Publish
+        run: |
+          cat > .npmrc << NPMRC
+          //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}
+          NPMRC
+          sed -i 's/^ *//' .npmrc
+          bunx npm@latest version "${{ steps.version.outputs.version }}" --no-git-tag-version --allow-same-version
+          bunx npm@latest publish --registry "https://registry.npmjs.org/" --tag latest --access public --ignore-scripts
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
