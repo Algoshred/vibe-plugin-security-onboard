@@ -55,7 +55,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - if: github.event_name == 'workflow_dispatch'
         run: |
-          git config --local user.email "ci@burdenoff.com"
+          git config --local user.email "oss@vibecontrols.com"
           git config --local user.name "CI"
           git tag "${{ steps.version.outputs.version }}" -m "Release ${{ steps.version.outputs.name }}@${{ steps.version.outputs.version }}"
           git push origin "${{ steps.version.outputs.version }}"
