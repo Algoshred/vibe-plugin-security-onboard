@@ -1,13 +1,19 @@
 /**
  * @vibecontrols/vibe-plugin-security-onboard
  *
- * Repo profile detector. Registers as a `security.onboard`
- * provider with @vibecontrols/vibe-plugin-security on the host's
- * ServiceRegistry. When the user runs the onboard lifecycle stage
- * the security meta plugin dispatches detection to this provider
- * which walks marker files (package.json, go.mod, Cargo.toml,
- * Chart.yaml, manifest.json, pubspec.yaml, capacitor.config.*) and
- * emits a single info finding with the inferred profile in metadata.
+ * Repo profile detector + default-policy seeder. Registers as a
+ * `security.onboard` provider with @vibecontrols/vibe-plugin-security on
+ * the host's ServiceRegistry. When the user runs the onboard lifecycle
+ * stage the security meta plugin dispatches to this provider, which:
+ *   - classifies the repo into one or more profiles (frontend / backend /
+ *     cli / sdk / mcp / chrome_extension / vscode_extension / mobile / iac /
+ *     container / gitops) from marker files + package.json contents,
+ *   - seeds a default RepositorySecurityConfig (recommended lifecycle
+ *     stages per profile + a criticality-derived policy level), persisting
+ *     it best-effort via the backend `updateRepositorySecurityConfig`
+ *     mutation when the host exposes `workspaceQuery`, and
+ *   - emits info findings per profile + a medium finding when ownership /
+ *     criticality metadata is missing, plus a JSON evidence artifact.
  */
 import { ProviderRegistry, TelemetryEmitter, createLifecycleHooks } from "@vibecontrols/plugin-sdk";
 import type {
