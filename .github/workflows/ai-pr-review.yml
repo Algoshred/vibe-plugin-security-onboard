@@ -31,6 +31,7 @@ jobs:
       id-token: write
     name: Claude Code Review
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -66,6 +67,7 @@ jobs:
     name: OpenCode Review (Minimax M2.7)
     if: vars.AI_REVIEW_OPENCODE_ENABLED == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -102,6 +104,7 @@ jobs:
     name: OpenCode Review (Ollama Qwen3.5)
     if: vars.AI_REVIEW_OPENCODE_ENABLED == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -138,6 +141,7 @@ jobs:
     name: OpenCode Review (Deepseek v4 Pro)
     if: vars.AI_REVIEW_OPENCODE_ENABLED == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
