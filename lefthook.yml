@@ -1,5 +1,14 @@
+# lefthook.yml: pre-push sanity gate.
+#
+# Install: bunx lefthook install
+#
+# The pre-push block is managed by @burdenoff/toolchain (`boff sync`): it runs
+# the hash-stamped `boff sanity --pre-push`, which skips every step whose inputs
+# are unchanged since the last passing run.
+
+# >>> boff managed (do not edit)
 pre-push:
-  parallel: false
   commands:
     sanity:
-      run: bun run sanity
+      run: ./node_modules/.bin/boff sanity --pre-push
+# <<< boff managed
