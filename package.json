@@ -60,10 +60,10 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/algoshred/vibe-plugin-security-onboard.git"
+    "url": "git+https://github.com/Algoshred/vibe-plugin-security-onboard.git"
   },
   "bugs": {
-    "url": "https://github.com/algoshred/vibe-plugin-security-onboard/issues"
+    "url": "https://github.com/Algoshred/vibe-plugin-security-onboard/issues"
   },
   "homepage": "https://vibecontrols.com",
   "publishConfig": {
